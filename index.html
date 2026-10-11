@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Click the Button</title>
+    <style>
+      :root {
+        --bg: #faf7f2;
+        --text: #2b2622;
+        --muted: #7a7068;
+        --accent: #e4572e;
+        --accent-dark: #b8401d;
+        --drifter: #f2d9a0;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #1c1917;
+          --text: #f5f0ea;
+          --muted: #a59b92;
+          --accent: #f0683f;
+          --accent-dark: #b8401d;
+          --drifter: #5a4a2a;
+        }
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        padding: 16px;
+        background: var(--bg);
+        color: var(--text);
+        font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+        text-align: center;
+      }
+      #count {
+        font-size: clamp(4rem, 20vw, 8rem);
+        font-weight: 700;
+        line-height: 1;
+        font-variant-numeric: tabular-nums;
+      }
+      #message {
+        margin: 12px 0 32px;
+        color: var(--muted);
+        min-height: 1.5em;
+      }
+      #click {
+        font: inherit;
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: #fff;
+        background: var(--accent);
+        border: 0;
+        border-radius: 999px;
+        padding: 18px 44px;
+        cursor: pointer;
+        box-shadow: 0 6px 0 var(--accent-dark);
+        transition: transform 80ms, box-shadow 80ms;
+      }
+      #click:active {
+        transform: translateY(4px);
+        box-shadow: 0 2px 0 var(--accent-dark);
+      }
+      #click:focus-visible {
+        outline: 3px solid var(--text);
+        outline-offset: 4px;
+      }
+      main {
+        position: relative;
+        z-index: 1;
+      }
+      #caught {
+        margin: 20px 0 0;
+        color: var(--muted);
+        min-height: 1.5em;
+      }
+      #drifter {
+        position: fixed;
+        top: 0;
+        left: 0;
+        z-index: 0;
+        font: inherit;
+        font-weight: 600;
+        color: var(--text);
+        background: var(--drifter);
+        border: 0;
+        border-radius: 999px;
+        padding: 12px 22px;
+        cursor: pointer;
+        opacity: 0.85;
+        will-change: transform;
+      }
+      #drifter:hover {
+        opacity: 1;
+      }
+      #drifter:focus-visible {
+        outline: 3px solid var(--text);
+        outline-offset: 4px;
+      }
+      #drifter.hit {
+        background: var(--accent);
+        color: #fff;
+      }
+      #reset {
+        display: block;
+        margin: 28px auto 0;
+        font: inherit;
+        color: var(--muted);
+        background: none;
+        border: 0;
+        text-decoration: underline;
+        cursor: pointer;
+      }
+    </style>
+  </head>
+  <body>
+    <button id="drifter" type="button">Catch me</button>
+
+    <main>
+      <div id="count" aria-live="polite">0</div>
+      <p id="message">Go on, click it.</p>
+      <button id="click" type="button">Click me</button>
+      <p id="caught" aria-live="polite"></p>
+      <button id="reset" type="button">Start over</button>
+    </main>
+
+    <script>
+      const countEl = document.getElementById("count");
+      const messageEl = document.getElementById("message");
+      const caughtEl = document.getElementById("caught");
+      const drifter = document.getElementById("drifter");
+      let count = 0;
+      let caught = 0;
+
+      function render() {
+        countEl.textContent = count;
+        if (count === 0) messageEl.textContent = "Go on, click it.";
+        else if (count === 1) messageEl.textContent = "You clicked the button once.";
+        else messageEl.textContent = `You clicked the button ${count} times.`;
+        if (caught === 0) caughtEl.textContent = "";
+        else if (caught === 1) caughtEl.textContent = "Caught the moving button once.";
+        else caughtEl.textContent = `Caught the moving button ${caught} times.`;
+      }
+
+      document.getElementById("click").addEventListener("click", () => {
+        count += 1;
+        render();
+      });
+
+      document.getElementById("reset").addEventListener("click", () => {
+        count = 0;
+        caught = 0;
+        render();
+      });
+
+      // The moving button drifts around the window and bounces off the edges.
+      const slow = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      const speed = slow ? 40 : 140; // pixels per second
+      const angle = Math.random() * Math.PI * 2;
+      let x = Math.random() * Math.max(0, window.innerWidth - drifter.offsetWidth);
+      let y = Math.random() * Math.max(0, window.innerHeight - drifter.offsetHeight);
+      let dx = Math.cos(angle) * speed;
+      let dy = Math.sin(angle) * speed;
+      let last = performance.now();
+
+      function drift(now) {
+        const dt = Math.min((now - last) / 1000, 0.05);
+        last = now;
+        const maxX = Math.max(0, window.innerWidth - drifter.offsetWidth);
+        const maxY = Math.max(0, window.innerHeight - drifter.offsetHeight);
+        x += dx * dt;
+        y += dy * dt;
+        if (x <= 0 || x >= maxX) {
+          dx = x <= 0 ? Math.abs(dx) : -Math.abs(dx);
+          x = Math.min(Math.max(x, 0), maxX);
+        }
+        if (y <= 0 || y >= maxY) {
+          dy = y <= 0 ? Math.abs(dy) : -Math.abs(dy);
+          y = Math.min(Math.max(y, 0), maxY);
+        }
+        drifter.style.transform = `translate(${x}px, ${y}px)`;
+        requestAnimationFrame(drift);
+      }
+      requestAnimationFrame(drift);
+
+      drifter.addEventListener("click", () => {
+        caught += 1;
+        render();
+        drifter.classList.add("hit");
+        setTimeout(() => drifter.classList.remove("hit"), 200);
+      });
+    </script>
+  </body>
+</html>
